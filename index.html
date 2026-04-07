@@ -207,7 +207,7 @@ const CATS=[
 const SHORT={'Food & Drinks':'Food','Miscellaneous':'Misc','Entertainment':'Entmt','Subscriptions':'Subs','Investments':'Invest'};
 function short(n){return SHORT[n]||n.split(' ')[0]}
 
-let S = { supabaseUrl: '', supabaseKey: '', cur: '$', name: 'Jef', txns: [], filter: 'all', viewOffset: 0, editId: null, selCat: 'food' };
+let S = { supabaseUrl: '', supabaseKey: '', cur: '$', name: 'User', txns: [], filter: 'all', viewOffset: 0, editId: null, selCat: 'food' };
 let sbClient = null;
 
 function load(){ try{ const d=localStorage.getItem('spendly_sb'); if(d){ const p=JSON.parse(d); S={...S,...p}; } }catch(e){} }
@@ -215,7 +215,7 @@ function save(){ localStorage.setItem('spendly_sb', JSON.stringify({ supabaseUrl
 
 function go(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 function goGuide(){ go('guide'); }
-function openSettings(){ if(confirm('Disconnect Supabase and clear data?')){ localStorage.removeItem('spendly_sb'); S={supabaseUrl:'',supabaseKey:'',cur:'$',name:'Jef',txns:[],filter:'all',viewOffset:0,editId:null,selCat:'food'}; sbClient=null; go('setup'); } }
+function openSettings(){ if(confirm('Disconnect Supabase and clear data?')){ localStorage.removeItem('spendly_sb'); S={supabaseUrl:'',supabaseKey:'',cur:'$',name:'User',txns:[],filter:'all',viewOffset:0,editId:null,selCat:'food'}; sbClient=null; go('setup'); } }
 function greetingText(){ const h=new Date().getHours(); const g=h<12?'Good morning':h<17?'Good afternoon':'Good evening'; return S.name?`${g}, ${S.name}`:g; }
 
 async function initSupabase(){
@@ -224,8 +224,8 @@ async function initSupabase(){
   const cur = document.getElementById('cur-sym').value.trim() || '$';
   const name = document.getElementById('user-name').value.trim();
   if(!url.startsWith('https://')){ toast('Supabase URL must start with https://','err'); return; }
-  if(!key.startsWith('eyJ')){ toast('Invalid anon key (should start with eyJ)','err'); return; }
-  S.supabaseUrl = url; S.supabaseKey = key; S.cur = cur; S.name = name || 'Jef';
+  if(!key.startsWith('sb_publishable')){ toast('Invalid anon key (should start with sb_publishable)','err'); return; }
+  S.supabaseUrl = url; S.supabaseKey = key; S.cur = cur; S.name = name || 'User';
   save();
   try{
     const { createClient } = supabase;
