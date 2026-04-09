@@ -1,7 +1,7 @@
 /**
  * Spendly — Gmail → SupaBase Auto-Sync
  *
- * Watches for PayLah! + Citibank + OCBC transaction alert emails and automatically
+ * Watches for PayLah! + Citibank + OCBC + UOB transaction alert emails and automatically
  * logs them to your SupaBase Expenses database.
  *
  * SETUP:
