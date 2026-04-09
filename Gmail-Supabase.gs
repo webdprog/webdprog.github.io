@@ -1,8 +1,8 @@
 /**
- * Spendly — Gmail → Notion Auto-Sync
+ * Spendly — Gmail → SupaBase Auto-Sync
  *
  * Watches for PayLah! + Citibank + OCBC transaction alert emails and automatically
- * logs them to your Notion Expenses database.
+ * logs them to your SupaBase Expenses database.
  *
  * SETUP:
  *  0. Change the respective bank alerts threshold to receive email alerts
@@ -20,7 +20,7 @@ function setConfig() {
   const props = PropertiesService.getScriptProperties();
   props.setProperties({
     SUPABASE_URL: 'https://XXXXXXXXX.supabase.co',
-    SUPABASE_KEY: 'sb_publishable_XXXXXXX',
+    SUPABASE_KEY: 'sb_publishable_XXXXXXXX',
     SUPABASE_TABLE: 'expenses', // your table name
   });
   console.log('Config saved.');
@@ -40,23 +40,23 @@ function getConfig() {
 // ─────────────────────────────────────────────
 
 const CATEGORY_RULES = [
-  { name: 'Transport',     pattern: /grab|gojek|taxi|comfort\s*del?gro|citycab|transit|mrt|smrt|sbs|lta|ez.?link|bus\s*inter/i },
-  { name: 'Food & Drinks', pattern: /food|restaurant|cafe|coffee|starbucks|mcdonald|kfc|burger|pizza|sushi|noodle|rice|chicken|fish|bakery|kopitiam|hawker|toast|dim\s*sum|bbq|grill|kitchen|eatery|dine|bistro|canteen|foodcourt/i },
-  { name: 'Shopping',      pattern: /shopping|retail|fashion|uniqlo|zara|h&m|h and m|ikea|courts|harvey\s*norman|best\s*denki|lazada|shopee|taobao|amazon|giant|ntuc|fairprice|cold\s*storage|sheng\s*siong|minimart|supermart|market/i },
-  { name: 'Health',        pattern: /clinic|pharmacy|guardian|watsons|hospital|dental|medical|health|polyclinic|raffles\s*medical|shenton/i },
-  { name: 'Entertainment', pattern: /cinema|shaw|cathay|golden\s*village|gv\b|movie|entertainment|amusement|attraction|zoo|museum|art|theatre/i },
-  { name: 'Subscriptions', pattern: /netflix|spotify|apple|google\s*play|disney|youtube|hulu|steam|adobe|dropbox|icloud/i },
-  { name: 'Travel',        pattern: /airlines|airasia|scoot|singapore\s*airlines|sia\b|jetstar|hotel|hostel|airbnb|booking\.com|agoda|ferry|cruise/i },
-  { name: 'Investments',   pattern: /brokerage|syfe|endowus|stashaway|tiger\s*brokers|moomoo|saxo|phillip|poems|cdp|cpf\s*invest|robo|etf|stocks?|shares?|fund/i },
-  { name: 'Services',      pattern: /singtel|starhub|m1\b|circles|myrepublic|telco|broadband|electricity|sp\s*group|town\s*council|insurance|ntuc\s*income|aia\b|prudential|great\s*eastern/i },
-  { name: 'Family',        pattern: /school|tuition|childcare|kindergarten|education|learning/i },
+  { name: 'transport',     pattern: /grab|gojek|taxi|comfort\s*del?gro|citycab|transit|mrt|smrt|sbs|lta|ez.?link|bus\s*inter/i },
+  { name: 'food', pattern: /food|restaurant|cafe|coffee|starbucks|mcdonald|kfc|burger|pizza|sushi|noodle|rice|chicken|fish|bakery|kopitiam|hawker|toast|dim\s*sum|bbq|grill|kitchen|eatery|dine|bistro|canteen|foodcourt/i },
+  { name: 'shopping',      pattern: /shopping|retail|fashion|uniqlo|zara|h&m|h and m|ikea|courts|harvey\s*norman|best\s*denki|lazada|shopee|taobao|amazon|giant|ntuc|fairprice|cold\s*storage|sheng\s*siong|minimart|supermart|market/i },
+  { name: 'health',        pattern: /clinic|pharmacy|guardian|watsons|hospital|dental|medical|health|polyclinic|raffles\s*medical|shenton/i },
+  { name: 'entertainment', pattern: /cinema|shaw|cathay|golden\s*village|gv\b|movie|entertainment|amusement|attraction|zoo|museum|art|theatre/i },
+  { name: 'subscriptions', pattern: /netflix|spotify|apple|google\s*play|disney|youtube|hulu|steam|adobe|dropbox|icloud/i },
+  { name: 'travel',        pattern: /airlines|airasia|scoot|singapore\s*airlines|sia\b|jetstar|hotel|hostel|airbnb|booking\.com|agoda|ferry|cruise/i },
+  { name: 'investments',   pattern: /brokerage|syfe|endowus|stashaway|tiger\s*brokers|moomoo|saxo|phillip|poems|cdp|cpf\s*invest|robo|etf|stocks?|shares?|fund/i },
+  { name: 'services',      pattern: /singtel|starhub|m1\b|circles|myrepublic|telco|broadband|electricity|sp\s*group|town\s*council|insurance|ntuc\s*income|aia\b|prudential|great\s*eastern/i },
+  { name: 'family',        pattern: /school|tuition|childcare|kindergarten|education|learning/i },
 ];
 
 function guessCategory(merchant) {
   for (const rule of CATEGORY_RULES) {
     if (rule.pattern.test(merchant)) return rule.name;
   }
-  return 'Miscellaneous';
+  return 'misc';
 }
 
 // ─────────────────────────────────────────────
@@ -243,13 +243,141 @@ function parseOCBCEmail(body, emailDate) {
   };
 }
 
+function parseUOBEmail(body, emailDate) {
+  // Amount — "A transaction of SGD 3.97 was made"
+  const amountMatch = body.match(/transaction of SGD\s*([\d,]+(?:\.\d{1,2})?)/i);
+  if (!amountMatch) return null;
+  const amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+  if (!amount || amount <= 0) return null;
+
+  // Merchant / Description — "on 09/04/26 at BUS/MRT"
+  // Look for "at" followed by merchant until end of line or period
+  let merchant = 'UOB Transaction';
+  const merchantMatch = body.match(/at\s+([^.]+?)(?:\.|$)/i);
+  if (merchantMatch) {
+    merchant = cleanMerchantName(merchantMatch[1].trim());
+  }
+  
+  // Also try to capture the card-ending context
+  const cardMatch = body.match(/UOB Card ending (\d{4})/i);
+  if (cardMatch && merchant === 'UOB Transaction') {
+    merchant = `UOB Card ${cardMatch[1]}`;
+  }
+
+  // Date — format "09/04/26" (DD/MM/YY)
+  const dateMatch = body.match(/on\s+(\d{2}\/\d{2}\/\d{2})/i);
+  let txnDate;
+  if (dateMatch) {
+    // Parse DD/MM/YY format
+    const parts = dateMatch[1].split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+      let year = parseInt(parts[2], 10);
+      // Convert 2-digit year to 4-digit (assume 2000s)
+      year = 2000 + year;
+      txnDate = new Date(year, month, day);
+      // If the parsed date is invalid, fall back to email date
+      if (isNaN(txnDate.getTime())) {
+        txnDate = emailDate;
+      }
+    } else {
+      txnDate = emailDate;
+    }
+  } else {
+    txnDate = emailDate;
+  }
+
+  return {
+    amount,
+    merchant,
+    category: guessCategory(merchant),
+    date: txnDate.toISOString(),
+    notes: '',
+  };
+}
+
+function parseUOBQREmail(body, emailDate) {
+  let amount = null;
+  let merchant = 'UOB Transaction';
+  let txnDate = emailDate;
+
+  // Try NETS QR format first
+  // "You made a NETS QR payment of SGD 3.20 to HUP KEE DELICI"
+  const netsAmountMatch = body.match(/NETS QR payment of SGD\s*([\d,]+(?:\.\d{1,2})?)/i);
+  const netsMerchantMatch = body.match(/to\s+([^.]+?)(?:\s+on\s+your|\s+at\s+|\s*\.|$)/i);
+  
+  if (netsAmountMatch) {
+    // NETS QR format
+    amount = parseFloat(netsAmountMatch[1].replace(/,/g, ''));
+    if (netsMerchantMatch) {
+      merchant = cleanMerchantName(netsMerchantMatch[1].trim());
+    }
+    
+    // Date format in NETS: "at 7:37AM SGT, 08 Apr 26"
+    const dateMatch = body.match(/(\d{1,2}\s+\w{3}\s+\d{2})/i);
+    if (dateMatch) {
+      const parts = dateMatch[1].split(' ');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = monthNames.indexOf(parts[1]);
+        let year = parseInt(parts[2], 10);
+        year = 2000 + year;
+        txnDate = new Date(year, month, day);
+        if (isNaN(txnDate.getTime())) txnDate = emailDate;
+      }
+    }
+  } else {
+    // Try original card transaction format
+    const cardAmountMatch = body.match(/transaction of SGD\s*([\d,]+(?:\.\d{1,2})?)/i);
+    if (cardAmountMatch) {
+      amount = parseFloat(cardAmountMatch[1].replace(/,/g, ''));
+      
+      const merchantMatch = body.match(/at\s+([^.]+?)(?:\.|$)/i);
+      if (merchantMatch) {
+        merchant = cleanMerchantName(merchantMatch[1].trim());
+      }
+      
+      const cardMatch = body.match(/UOB Card ending (\d{4})/i);
+      if (cardMatch && merchant === 'UOB Transaction') {
+        merchant = `UOB Card ${cardMatch[1]}`;
+      }
+      
+      const dateMatch = body.match(/on\s+(\d{2}\/\d{2}\/\d{2})/i);
+      if (dateMatch) {
+        const parts = dateMatch[1].split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          let year = parseInt(parts[2], 10);
+          year = 2000 + year;
+          txnDate = new Date(year, month, day);
+          if (isNaN(txnDate.getTime())) txnDate = emailDate;
+        }
+      }
+    }
+  }
+
+  // If no amount found, return null
+  if (!amount || amount <= 0) return null;
+
+  return {
+    amount,
+    merchant,
+    category: guessCategory(merchant),
+    date: txnDate.toISOString(),
+    notes: '',
+  };
+}
+
 // ─────────────────────────────────────────────
 // MAIN — called by the time trigger
 // ─────────────────────────────────────────────
 
 function processEmailAlerts() {
   const config = getConfig();
-  if (!config.notionKey || !config.dbId) {
+  if (!config.supabaseUrl || !config.supabaseKey) {
     console.error('Missing config — run setConfig() first.');
     return;
   }
@@ -261,11 +389,15 @@ function processEmailAlerts() {
   const startDate = PropertiesService.getScriptProperties().getProperty('START_DATE')
     || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy/MM/dd');
 
+  // const startDate = '2026/04/08'
+
   const SOURCES = [
     { query: `from:paylah.alert@dbs.com subject:"Transaction Alerts" -label:spendly-processed after:${startDate}`,                                     parser: parsePayLahEmail },
     { query: `from:ibanking.alert@dbs.com subject:"Card Transaction Alert" -label:spendly-processed after:${startDate}`,                                parser: parsePayLahEmail },
     { query: `from:alerts@citibank.com.sg subject:"Citi Alerts - Credit Card/Ready Credit Transaction" -label:spendly-processed after:${startDate}`,    parser: parseCitiEmail   },
     { query: `from:notifications@ocbc.com subject:"PayNow transfer made" -label:spendly-processed after:${startDate}`,                                   parser: parseOCBCEmail   },
+    { query: `from:unialerts@uobgroup.com subject:"UOB - Transaction Alert" -label:spendly-processed after:${startDate}`,                                   parser: parseUOBEmail   },
+    { query: `from:unialerts@uobgroup.com subject:"UOB - NETS QR payment made" -label:spendly-processed after:${startDate}`,                                   parser: parseUOBQREmail   },
   ];
 
   let processed = 0;
