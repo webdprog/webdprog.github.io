@@ -19,8 +19,8 @@
 function setConfig() {
   const props = PropertiesService.getScriptProperties();
   props.setProperties({
-    SUPABASE_URL: 'https://tnfmbfucvpkzovehtxqo.supabase.co',
-    SUPABASE_KEY: 'sb_publishable_Do3fg551dTdQf_JNAnsvwg_HciwgwQq',
+    SUPABASE_URL: 'https://XXXXXXXXX.supabase.co',
+    SUPABASE_KEY: 'sb_publishable_XXXXXXX',
     SUPABASE_TABLE: 'expenses', // your table name
   });
   console.log('Config saved.');
