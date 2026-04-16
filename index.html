@@ -127,7 +127,7 @@ input::placeholder{color:var(--muted)}
 #amt-input:focus{border-color:var(--accent)}
 .cat-grid-modal{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:16px}
 .cbtn{background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 4px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .12s;text-transform:uppercase;letter-spacing:.03em;line-height:1.2;text-align:center}
-.cbtn .cico{font-size:18px}
+.cbtn .cico{font-size:18px;display:flex;align-items:center;justify-content:center;height:22px}
 .cbtn.on{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-light)}
 
 /* GUIDE */
@@ -203,10 +203,30 @@ input::placeholder{color:var(--muted)}
 
 <script>
 const CATS=[
-  {id:'food',name:'Food & Drinks',icon:'🍜',hex:'#c0622a'},{id:'shopping',name:'Shopping',icon:'🛍️',hex:'#7a5535'},{id:'travel',name:'Travel',icon:'✈️',hex:'#3a7a6a'},{id:'services',name:'Services',icon:'🔧',hex:'#4a6080'},{id:'entertainment',name:'Entertainment',icon:'🎬',hex:'#7a4a80'},{id:'health',name:'Health',icon:'💊',hex:'#3a7a3a'},{id:'transport',name:'Transport',icon:'🚌',hex:'#6a6a20'},{id:'subscription',name:'Subscriptions',icon:'🔁',hex:'#7a3a5a'},{id:'investments',name:'Investments',icon:'📈',hex:'#2a6a4a'},{id:'family',name:'Family',icon:'🏠',hex:'#8a5a2a'},{id:'misc',name:'Miscellaneous',icon:'📦',hex:'#7a6a50'}
+  {id:'food',name:'Food & Drinks',icon:'🍜',hex:'#c0622a'},{id:'shopping',name:'Shopping',icon:'🛍️',hex:'#7a5535'},{id:'travel',name:'Travel',icon:'✈️',hex:'#3a7a6a'},{id:'services',name:'Services',icon:'🔧',hex:'#4a6080'},{id:'entertainment',name:'Entertainment',icon:'🎬',hex:'#7a4a80'},{id:'health',name:'Health',icon:'💊',hex:'#3a7a3a'},{id:'transport',name:'Transport',icon:'🚌',hex:'#6a6a20'},{id:'subscription',name:'Subscriptions',icon:'🔁',hex:'#7a3a5a'},{id:'investments',name:'Investments',icon:'📈',hex:'#2a6a4a'},{id:'family',name:'Family',icon:'🏠',hex:'#8a5a2a'},{id:'misc',name:'Miscellaneous',icon:'📦',hex:'#7a6a50'},{id:'pokemon',name:'Pokémon',icon:'⬜',hex:'#7b52ab',svg:true}
 ];
-const SHORT={'Food & Drinks':'Food','Miscellaneous':'Misc','Entertainment':'Entmt','Subscriptions':'Subs','Investments':'Invest'};
+const SHORT={'Food & Drinks':'Food','Miscellaneous':'Misc','Entertainment':'Entmt','Subscriptions':'Subs','Investments':'Invest','Pokémon':'Pokémon'};
 function short(n){return SHORT[n]||n.split(' ')[0]}
+
+function catIcon(c,size=20){
+  if(c.svg) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="${size}" height="${size}">
+    <!-- top half: red -->
+    <path d="M4,18 A14,14 0 0,1 32,18 Z" fill="#e63535"/>
+    <!-- bottom half: white -->
+    <path d="M4,18 A14,14 0 0,0 32,18 Z" fill="#f5f5f5"/>
+    <!-- black outline circle -->
+    <circle cx="18" cy="18" r="14" fill="none" stroke="#222" stroke-width="2"/>
+    <!-- center band -->
+    <line x1="4" y1="18" x2="32" y2="18" stroke="#222" stroke-width="2.2"/>
+    <!-- center button: outer ring -->
+    <circle cx="18" cy="18" r="4.5" fill="#222"/>
+    <!-- center button: inner white -->
+    <circle cx="18" cy="18" r="3" fill="#fff"/>
+    <!-- center button: shine -->
+    <circle cx="19.2" cy="16.8" r="1" fill="#fff" opacity=".6"/>
+  </svg>`;
+  return `<span style="font-size:${size}px;line-height:1">${c.icon}</span>`;
+}
 
 let S = { supabaseUrl: '', supabaseKey: '', cur: '$', name: 'User', txns: [], filter: 'all', viewOffset: 0, editId: null, selCat: 'food' };
 let sbClient = null;
@@ -312,7 +332,7 @@ function renderList(mTxns){
     const c=CATS.find(x=>x.id===t.category)||CATS[CATS.length-1];
     const ds=new Date(t.date).toLocaleString('en-SG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
     const div=document.createElement('div'); div.className='txn'; div.style.cursor='pointer'; div.onclick=()=>openEditModal(t.id);
-    div.innerHTML=`<div class="txn-ico" style="background:${c.hex}18;font-size:20px">${c.icon}</div><div class="txn-info"><div class="txn-name">${t.name||c.name}</div><div class="txn-sub">${c.name} · ${ds}</div></div><div class="txn-amt" style="color:${c.hex}">${S.cur}${t.amount.toFixed(2)}</div><button class="del-btn" onclick="event.stopPropagation();deleteTxn('${t.id}')">✕</button>`;
+    div.innerHTML=`<div class="txn-ico" style="background:${c.hex}18;font-size:20px;display:flex;align-items:center;justify-content:center">${catIcon(c,20)}</div><div class="txn-info"><div class="txn-name">${t.name||c.name}</div><div class="txn-sub">${c.name} · ${ds}</div></div><div class="txn-amt" style="color:${c.hex}">${S.cur}${t.amount.toFixed(2)}</div><button class="del-btn" onclick="event.stopPropagation();deleteTxn('${t.id}')">✕</button>`;
     l.appendChild(div);
   });
 }
@@ -329,7 +349,7 @@ async function deleteTxn(id){
 
 function buildCatRow(){
   const r=document.getElementById('cat-row'); r.innerHTML='';
-  CATS.forEach(c=>{ const b=document.createElement('button'); b.className='cbtn'+(c.id===S.selCat?' on':''); b.innerHTML=`<span class="cico">${c.icon}</span>${short(c.name)}`; b.onclick=()=>{ S.selCat=c.id; document.querySelectorAll('.cbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }; r.appendChild(b); });
+  CATS.forEach(c=>{ const b=document.createElement('button'); b.className='cbtn'+(c.id===S.selCat?' on':''); b.innerHTML=`<span class="cico">${catIcon(c,20)}</span>${short(c.name)}`; b.onclick=()=>{ S.selCat=c.id; document.querySelectorAll('.cbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }; r.appendChild(b); });
 }
 function openModal(){ S.editId=null; document.getElementById('modal-title').textContent='New transaction'; document.getElementById('modal-btn').textContent='Log transaction →'; document.getElementById('amt-input').value=''; document.getElementById('txn-name').value=''; buildCatRow(); document.getElementById('overlay').classList.add('open'); setTimeout(()=>document.getElementById('amt-input').focus(),300); }
 function openEditModal(id){ const t=S.txns.find(x=>x.id===id); if(!t)return; S.editId=id; S.selCat=t.category; document.getElementById('modal-title').textContent='Edit transaction'; document.getElementById('modal-btn').textContent='Save changes →'; document.getElementById('amt-input').value=t.amount; document.getElementById('txn-name').value=t.name; buildCatRow(); document.getElementById('overlay').classList.add('open'); }
